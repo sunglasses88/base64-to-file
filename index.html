@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Base64转PDF工具 - 在线预览并转为文件 - sunglasses88 开源工具</title>
+    <meta name="description" content="免费高效的在线 Base64 转文件工具。支持纯 Base64 字符串实时预览 PDF、图片（PNG/JPG），支持一键转换为各种后缀文件。纯前端处理，数据不上传服务器，保护您的隐私安全。">
+    <meta name="keywords" content="Base64转PDF, Base64在线预览, Base64解码, 纯前端工具, Base64转图片, sunglasses88">
+    <meta name="author" content="sunglasses88">
+    
+    <link rel="canonical" href="https://sunglasses88.github.io/base64-to-file/" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Base64 to File Converter",
+      "operatingSystem": "Web Browser",
+      "applicationCategory": "UtilitiesApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "sunglasses88"
+      }
+    }
+    </script>
+
+    <style>
+        :root { --primary: #2c3e50; --accent: #e74c3c; --bg: #f8f9fa; }
+        body { font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; color: #333; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        header { text-align: center; margin-bottom: 30px; }
+        h1 { color: var(--primary); margin-bottom: 10px; font-size: 24px; }
+        p.subtitle { color: #666; margin-top: 0; }
+        
+        .input-section { margin-bottom: 20px; }
+        textarea { width: 100%; height: 180px; padding: 15px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-family: 'Courier New', monospace; font-size: 13px; transition: border-color 0.3s; }
+        textarea:focus { border-color: var(--accent); outline: none; }
+
+        .toolbar { display: grid; grid-template-columns: 2fr 1.5fr 1fr auto; gap: 15px; align-items: end; background: #f1f3f5; padding: 20px; border-radius: 8px; }
+        .field label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input, select { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; }
+
+        .btn-download { background: var(--accent); color: white; border: none; padding: 0 25px; border-radius: 6px; cursor: pointer; font-weight: bold; height: 42px; transition: all 0.2s; }
+        .btn-download:hover { background: #c0392b; transform: translateY(-1px); }
+
+        /* 预览区优化 */
+        .preview-wrapper { margin-top: 25px; border: 2px dashed #cbd5e0; border-radius: 8px; min-height: 400px; background: #fff; overflow: hidden; display: flex; flex-direction: column; }
+        .preview-header { padding: 10px; border-bottom: 1px solid #eee; background: #fff; font-size: 13px; color: #718096; display: flex; justify-content: space-between; }
+        #previewContainer { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; }
+        #previewPdf { width: 100%; height: 600px; border: none; display: none; }
+        #previewImg { max-width: 95%; max-height: 550px; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .placeholder { color: #a0aec0; text-align: center; }
+
+        /* SEO 文章区块 */
+        .seo-content { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #4a5568; }
+        .seo-content h2 { font-size: 18px; color: var(--primary); }
+        .seo-content ul { padding-left: 20px; }
+
+        footer { text-align: center; margin-top: 30px; font-size: 12px; color: #a0aec0; }
+
+        @media (max-width: 768px) {
+            .toolbar { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Base64 在线转文件工具</h1>
+        <p class="subtitle">支持纯 Base64 实时预览 PDF 与图片，本地解码更安全</p>
+    </header>
+    
+    <div class="input-section">
+        <textarea id="base64Input" placeholder="在此粘贴 Base64 字符串（如: JVBERi...）"></textarea>
+    </div>
+
+    <div class="toolbar">
+        <div class="field">
+            <label>自定义文件名</label>
+            <input type="text" id="fileName" value="base64_export">
+        </div>
+        <div class="field">
+            <label>转换格式</label>
+            <select id="formatSelect" onchange="toggleCustomExt(); updatePreview();">
+                <option value="pdf" selected>PDF 文档 (.pdf)</option>
+                <option value="png">PNG 图片 (.png)</option>
+                <option value="jpg">JPG 图片 (.jpg)</option>
+                <option value="txt">文本文件 (.txt)</option>
+                <option value="docx">Word (.docx)</option>
+                <option value="custom">-- 手动输入后缀 --</option>
+            </select>
+        </div>
+        <div class="field" id="customExtGroup" style="display:none">
+            <label>后缀名</label>
+            <input type="text" id="customExt" placeholder="如: zip">
+        </div>
+        <button class="btn-download" onclick="downloadFile()">一键下载文件</button>
+    </div>
+
+    <div class="preview-wrapper">
+        <div class="preview-header">
+            <span>实时预览窗口</span>
+            <span id="statusInfo">等待输入...</span>
+        </div>
+        <div id="previewContainer">
+            <div id="placeholder" class="placeholder">粘贴 Base64 后自动生成预览</div>
+            <embed id="previewPdf" type="application/pdf">
+            <img id="previewImg" alt="Base64 转换结果预览">
+        </div>
+    </div>
+
+    <article class="seo-content">
+        <h2>什么是 Base64 转 PDF 工具？</h2>
+        <p>本工具由 <strong>sunglasses88</strong> 开发，旨在提供一个完全运行在客户端的 Base64 解码方案。Base64 是一种常见的将二进制数据转换为文本字符串的编码方式，常用于在 API 或数据库中传输 PDF 文档、图像和其他文件。</p>
+        <h2>为什么选择本地转换预览？</h2>
+        <ul>
+            <li><strong>隐私安全：</strong> 不同于其他在线工具，您的 Base64 数据不会上传到我们的服务器，转换过程 100% 在您的电脑上完成。</li>
+            <li><strong>实时预览：</strong> 支持纯 Base64 字符串渲染 PDF。粘贴即预览，无需下载即可查看内容。</li>
+            <li><strong>多格式支持：</strong> 灵活切换后缀名，支持 PDF, PNG, JPG, DOCX 等所有主流格式。</li>
+        </ul>
+    </article>
+
+    <footer>
+        &copy; 2025 sunglasses88. 基于 GitHub Pages 托管。
+    </footer>
+</div>
+
+<script>
+    const base64Input = document.getElementById('base64Input');
+    const formatSelect = document.getElementById('formatSelect');
+    const previewPdf = document.getElementById('previewPdf');
+    const previewImg = document.getElementById('previewImg');
+    const placeholder = document.getElementById('placeholder');
+    const statusInfo = document.getElementById('statusInfo');
+    let currentBlobUrl = null;
+
+    base64Input.addEventListener('input', updatePreview);
+
+    function updatePreview() {
+        let str = base64Input.value.trim();
+        if (!str) { resetUI(); return; }
+
+        if (str.includes('base64,')) str = str.split('base64,')[1];
+
+        try {
+            const cleanBase64 = str.replace(/\s/g, '');
+            const binary = atob(cleanBase64);
+            const array = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+
+            const format = formatSelect.value;
+            if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+
+            if (format === 'pdf') {
+                const blob = new Blob([array], { type: 'application/pdf' });
+                currentBlobUrl = URL.createObjectURL(blob);
+                showPdf(currentBlobUrl);
+                statusInfo.textContent = `识别为 PDF (${(blob.size/1024).toFixed(1)} KB)`;
+            } 
+            else if (format === 'png' || format === 'jpg') {
+                const type = format === 'jpg' ? 'jpeg' : 'png';
+                const blob = new Blob([array], { type: `image/${type}` });
+                currentBlobUrl = URL.createObjectURL(blob);
+                showImg(currentBlobUrl);
+                statusInfo.textContent = `识别为图片 (${(blob.size/1024).toFixed(1)} KB)`;
+            } else {
+                showNone("当前格式不支持在线预览，请直接下载");
+                statusInfo.textContent = "准备就绪";
+            }
+        } catch (e) {
+            showNone("Base64 格式无效");
+            statusInfo.textContent = "解码失败";
+        }
+    }
+
+    function showPdf(url) {
+        previewImg.style.display = 'none';
+        previewPdf.style.display = 'block';
+        previewPdf.src = url;
+        placeholder.style.display = 'none';
+    }
+
+    function showImg(url) {
+        previewPdf.style.display = 'none';
+        previewImg.style.display = 'block';
+        previewImg.src = url;
+        placeholder.style.display = 'none';
+    }
+
+    function showNone(msg) {
+        previewPdf.style.display = 'none';
+        previewImg.style.display = 'none';
+        placeholder.style.display = 'block';
+        placeholder.textContent = msg;
+    }
+
+    function resetUI() {
+        showNone("粘贴 Base64 后自动生成预览");
+        statusInfo.textContent = "等待输入...";
+    }
+
+    function toggleCustomExt() {
+        document.getElementById('customExtGroup').style.display = (formatSelect.value === 'custom') ? 'block' : 'none';
+    }
+
+    function downloadFile() {
+        let str = base64Input.value.trim();
+        if (!str) return;
+        if (str.includes('base64,')) str = str.split('base64,')[1];
+        
+        const fileName = document.getElementById('fileName').value || 'file';
+        const ext = formatSelect.value === 'custom' ? document.getElementById('customExt').value : formatSelect.value;
+
+        try {
+            const binary = atob(str.replace(/\s/g, ''));
+            const array = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+            const blob = new Blob([array]);
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${fileName}.${ext}`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        } catch (e) {
+            alert('下载失败，请检查数据完整性');
+        }
+    }
+</script>
+</body>
+</html>
